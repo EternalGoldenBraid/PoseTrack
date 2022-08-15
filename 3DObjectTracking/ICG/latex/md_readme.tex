@@ -1,0 +1,201 @@
+\hypertarget{md_readme_autotoc_md1}{}\doxysection{Paper}\label{md_readme_autotoc_md1}
+Iterative Corresponding Geometry\+: Fusing Region and Depth for Highly Efficient 3D Tracking of Textureless Objects ~\newline
+ Manuel Stoiber, Martin Sundermeyer, Rudolph Triebel ~\newline
+ Conference on Computer Vision and Pattern Recognition (CVPR) 2022 ~\newline
+ \href{https://openaccess.thecvf.com/content/CVPR2022/papers/Stoiber_Iterative_Corresponding_Geometry_Fusing_Region_and_Depth_for_Highly_Efficient_CVPR_2022_paper.pdf}{\texttt{ Paper}}, \href{https://openaccess.thecvf.com/content/CVPR2022/supplemental/Stoiber_Iterative_Corresponding_Geometry_CVPR_2022_supplemental.pdf}{\texttt{ supplementary}}\hypertarget{md_readme_autotoc_md2}{}\doxysection{Abstract}\label{md_readme_autotoc_md2}
+Tracking objects in 3D space and predicting their 6DoF pose is an essential task in computer vision. State-\/of-\/the-\/art approaches often rely on object texture to tackle this problem. However, while they achieve impressive results, many objects do not contain sufficient texture, violating the main underlying assumption. In the following, we thus propose ICG, a novel probabilistic tracker that fuses region and depth information and only requires the object geometry. Our method deploys correspondence lines and points to iteratively refine the pose. We also implement robust occlusion handling to improve performance in real-\/world settings. Experiments on the YCB-\/\+Video, OPT, and Choi datasets demonstrate that, even for textured objects, our approach outperforms the current state of the art with respect to accuracy and robustness. At the same time, ICG shows fast convergence and outstanding efficiency, requiring only 1.\+3 ms per frame on a single CPU core. Finally, we analyze the influence of individual components and discuss our performance compared to deep learning-\/based methods. The source code of our tracker is publicly available.\hypertarget{md_readme_autotoc_md3}{}\doxysection{Videos}\label{md_readme_autotoc_md3}
+\href{https://www.youtube.com/watch?v=eYd_3TnJIaE}{\texttt{  ~\newline
+ {\itshape Presentation CVPR 2022}  }}
+
+\href{https://youtu.be/qMr1RHCsnDk?t=10}{\texttt{  ~\newline
+ {\itshape Real-\/\+World Experiments}  }}
+
+\href{https://youtu.be/qMr1RHCsnDk?t=143}{\texttt{  ~\newline
+ {\itshape Evaluation on the YCB-\/\+Video Dataset}  }}\hypertarget{md_readme_autotoc_md4}{}\doxysection{Code}\label{md_readme_autotoc_md4}
+The following library is able to consider images from multiple depth and color cameras and fuses information from depth and region modalities to simultaneously predict the pose of multiple objects. It is able to consider unknown occlusions using depth camera measurements or model known occlusions using depth renderers. The algorithm is highly efficient and typically requires about 1-\/2ms per frame on a single CPU core for the tracking of a single object. To support a wide range of camera configurations and various object characteristics, the overall framework is very modular and allows a flexible combination of different components such as cameras, modalities, viewers, object detectors, refiners, and publishers.\hypertarget{md_readme_autotoc_md5}{}\doxysubsection{Content}\label{md_readme_autotoc_md5}
+The repository is organized in the following folders\+:
+\begin{DoxyItemize}
+\item {\ttfamily include/}\+: header files of the {\itshape ICG} library
+\item {\ttfamily src/}\+: source files of the {\itshape ICG} library
+\item {\ttfamily third\+\_\+party/}\+: external header-\/only libraries
+\item {\ttfamily examples/}\+: example files for tracking as well as for evaluation on different datasets
+\item {\ttfamily doc/}\+: files for documentation
+\end{DoxyItemize}\hypertarget{md_readme_autotoc_md6}{}\doxysubsection{Build}\label{md_readme_autotoc_md6}
+Use {\ttfamily CMake} to build the library from source. The following dependencies are required\+: \href{https://eigen.tuxfamily.org/index.php?title=Main_Page}{\texttt{ Eigen 3}}, \href{http://glew.sourceforge.net/}{\texttt{ GLEW}}, \href{https://www.glfw.org/}{\texttt{ GLFW 3}}, and \href{https://opencv.org/}{\texttt{ Open\+CV 4}}. In addition, images from an Azure Kinect or Real\+Sense camera can be streamed using the \href{https://github.com/microsoft/Azure-Kinect-Sensor-SDK}{\texttt{ K4A}} and \href{https://github.com/IntelRealSense/librealsense}{\texttt{ realsense2}} libraries. Both libraries are optional and can be disabled using the {\itshape CMake} flags {\ttfamily USE\+\_\+\+AZURE\+\_\+\+KINECT}, and {\ttfamily USE\+\_\+\+REALSENSE}. If {\itshape CMake} finds \href{https://www.openmp.org/}{\texttt{ Open\+MP}}, the code is compiled using multithreading and vectorization for some functions. Finally, the documentation is built if \href{https://www.doxygen.nl/index.html}{\texttt{ Doxygen}} with {\itshape dot} is detected. Note that links to classes that are embedded in this readme only work in the generated documentation.\hypertarget{md_readme_autotoc_md7}{}\doxysubsection{Tracking Process}\label{md_readme_autotoc_md7}
+The tracking process is coordinated by the \href{classicg_1_1Tracker.html}{\texttt{ Tracker}} class. It executes the main methods of different components in the correct order. An overview of the major steps is shown in the following illustration\+:
+
+
+\begin{DoxyPre}
+ 1: Update cameras
+ 2: Detect bodies
+ 3: Refine poses
+ 4: Update viewers
+ 5: Start modalities
+ 6: {\bfseries{while}} tracking {\bfseries{do}}
+ 7:     Update cameras
+ 8:     {\bfseries{for}} n\_corr\_iterations {\bfseries{do}}
+ 9:         Calculate correspondences
+10:         {\bfseries{for}} n\_update\_iterations {\bfseries{do}}
+11:             Calculate gradient and Hessian
+12:             Calcualte pose optimization
+13:         {\bfseries{end for}}
+14:     {\bfseries{end for}}
+15:     Update modalities
+16:     Update publishers
+17:     Update viewers
+18: {\bfseries{end while}}
+\end{DoxyPre}
+
+
+Typically, tracking is started by updating the images from all cameras, detecting all objects in the image with a rough pose, refining the pose, and showing a visualization of the current estimate in the viewer. Having an initial pose estimate, modalities are started. After initialization, the tracking cycle is executed. First, all cameras are updated. This is followed by an iterative process to estimate the pose. It starts by calculating correspondences for all modalities. Subsequently, based on those correspondences, gradient vectors and Hessian matrices are calculated for all modalities. For each object, an optimizer then combines gradient vectors and Hessian matrices from corresponding modalities to update the object\textquotesingle{}s pose. Like the main cycle that includes the calculation of correspondences, this optimization process can be executed multiple times. After the final pose has been found, modalities are updated based on the obtained results. Finally, publishers that transmit data to external entities are executed and viewers visualize the final estimate.\hypertarget{md_readme_autotoc_md8}{}\doxysubsection{Main Components}\label{md_readme_autotoc_md8}
+The library consists of multiple components with specific functionality that allow a flexible configuration of the tracker. The following main components exist\+:
+\begin{DoxyItemize}
+\item {\bfseries{Body\+:}} Contains the geometry of a rigid body and stores the pose of the body relative to a world coordinate frame. It is implemented in the \href{classicg_1_1Body.html}{\texttt{ Body}} class.
+\item {\bfseries{Renderer\+Geometry\+:}} Loads geometric information from referenced {\ttfamily Body} objects and provides everything required for rendering. It is implemented in the \href{classicg_1_1RendererGeometry.html}{\texttt{ Renderer\+Geometry}} class.
+\item {\bfseries{Renderer\+:}} Creates a rendering based on the geometry stored in the {\ttfamily Renderer\+Geometry}, the pose of referenced {\ttfamily Body} objects, and the view of the renderer on the scene defined by intrinsics and the renderer pose. For tracking, intrinsics and the pose are typically inferred from the values of a corresponding {\ttfamily Camera} object. Both {\ttfamily Full\+Renderers}, which render an image according to intrinsics, and {\ttfamily Focused\+Renderers}, which focus on referenced bodies and render an image with a defined size that is scaled and cropped to only include the referenced bodies, exist. For occlusion handling, {\ttfamily Focused\+Renderer} objects are used. Based on the data in the {\ttfamily Renderer\+Geometry}, different bodies can be considered. Depth images are obtained by the \href{classicg_1_1FullBasicDepthRenderer.html}{\texttt{ Full\+Basic\+Depth\+Renderer}} and \href{classicg_1_1FocusedBasicDepthRenderer.html}{\texttt{ Focused\+Basic\+Depth\+Renderer}} classes. Normal images that encode the surface normal vector in pixel colors can be created using the \href{classicg_1_1FullNormalRenderer.html}{\texttt{ Full\+Normal\+Renderer}} and \href{classicg_1_1FocusedNormalRenderer.html}{\texttt{ Focused\+Normal\+Renderer}} classes.
+\item {\bfseries{Camera\+:}} Provides images to other components and contains intrinsics as well as the pose of the camera relative to the world coordinate frame. Both {\ttfamily Color\+Camera} and {\ttfamily Depth\+Camera} classes exist. Information can be loaded using the \href{classicg_1_1LoaderColorCamera.html}{\texttt{ Loader\+Color\+Camera}} and \href{classicg_1_1LoaderDepthCamera.html}{\texttt{ Loader\+Depth\+Camera}} classes. To stream data from a physical Azure Kinect or Real\+Sense camera, the \href{classicg_1_1AzureKinectColorCamera.html}{\texttt{ Azure\+Kinect\+Color\+Camera}}, \href{classicg_1_1AzureKinectDepthCamera.html}{\texttt{ Azure\+Kinect\+Depth\+Camera}}, \href{classicg_1_1RealSenseColorCamera.html}{\texttt{ Real\+Sense\+Color\+Camera}}, and \href{classicg_1_1RealSenseDepthCamera.html}{\texttt{ Real\+Sense\+Depth\+Camera}} classes are used.
+\item {\bfseries{Viewer\+:}} Visualizes different data. The \href{classicg_1_1ImageColorViewer.html}{\texttt{ Image\+Color\+Viewer}} and \href{classicg_1_1ImageDepthViewer.html}{\texttt{ Image\+Depth\+Viewer}} classes visualize images from a referenced {\ttfamily Color\+Camera} and {\ttfamily Depth\+Camera}. The \href{classicg_1_1NormalColorViewer.html}{\texttt{ Normal\+Color\+Viewer}} and \href{classicg_1_1NormalDepthViewer.html}{\texttt{ Normal\+Depth\+Viewer}} classes overlay camera images with normal renderings that are based on the data from a referenced {\ttfamily Renderer\+Geometry} object. They are used to visualize the current pose estimate.
+\item {\bfseries{Model\+:}} Precomputes and stores geometric information from {\ttfamily Body} objects that is required by {\ttfamily Modality} objects during tracking. Modalities that track the same object class and consider the same type of information can use the same {\ttfamily Model}. For the {\ttfamily Region\+Modality}, a \href{classicg_1_1RegionModel.html}{\texttt{ Region\+Model}} class is implemented while the {\ttfamily Depth\+Modality} uses the \href{classicg_1_1DepthModel.html}{\texttt{ Depth\+Model}} class.
+\item {\bfseries{Modality\+:}} Considers information from a {\ttfamily Camera}, {\ttfamily Body}, and {\ttfamily Model} object to calculate the gradient vector and Hessian matrix that are used by an {\ttfamily Optimizer} to update the object pose. To consider region information from a {\ttfamily Color\+Camera}, the \href{classicg_1_1RegionModality.html}{\texttt{ Region\+Modality}} class is used while the \href{classicg_1_1DepthModality.html}{\texttt{ Depth\+Modality}} class considers measurements from a {\ttfamily Depth\+Camera}. To model known occlusions, both modalities allow referencing a {\ttfamily Focused\+Depth\+Renderer}. The {\ttfamily Region\+Modality} also allows referencing an additional {\ttfamily Depth\+Camera} that is close to the {\ttfamily Color\+Camera} to recognize unknown occlusions.
+\item {\bfseries{Optimizer\+:}} References all {\ttfamily Modality} objects that consider the same {\ttfamily Body}. The gradient vectors and Hessian matrices from those {\ttfamily Modality} objects are used to update the pose of the referenced {\ttfamily Body}. It is implemented in the \href{classicg_1_1Optimizer.html}{\texttt{ Optimizer}} class.
+\item {\bfseries{Detector\+:}} Sets the pose of a referenced {\ttfamily Body}. While the \href{classicg_1_1StaticDetector.html}{\texttt{ Static\+Detector}} class sets a pre-\/defined pose, the \href{classicg_1_1ManualDetector.html}{\texttt{ Manual\+Detector}} class allows the user to select 4 object points in an image from a {\ttfamily Color\+Camera} to compute the pose.
+\item {\bfseries{Publisher\+:}} Writes data to an external source. Currently, no {\ttfamily Publisher} is implemented.
+\item {\bfseries{Refiner\+:}} Coordinates {\ttfamily Optimizer}, {\ttfamily Modality}, and {\ttfamily Renderer} objects to refine the pose of multiple {\ttfamily Body} objects. The overall process is very similar to the two inner loops of the iterative pose optimization process that was described previously. The main exception is only that modalities are started every time before correspondences are calculated. Functionality is implemented in the \href{classicg_1_1Refiner.html}{\texttt{ Refiner}} class.
+\item {\bfseries{Tracker\+:}} Coordinates all {\ttfamily Refiner}, {\ttfamily Publisher}, {\ttfamily Detector}, {\ttfamily Optimizer}, {\ttfamily Modality}, {\ttfamily Renderer}, {\ttfamily Viewer}, and {\ttfamily Camera} objects. The overall tracking process was described previously. All functionality is implemented in the \href{classicg_1_1Tracker.html}{\texttt{ Tracker}} class.
+\end{DoxyItemize}
+
+Based on those components, a tracker can be configured. An example of a tracker that tracks two bodies using information from two color cameras and one depth camera is shown in the following illustration\+:
+
+
+
+Based on the geometry of {\itshape Body 1} and {\itshape Body 2}, region and depth models are generated before the tracking starts. The relation is illustrated by dashed lines. The models are then used by the respective modalities. To track {\itshape Body 1}, two region modalities that reference data from the two color cameras and a depth modality that considers data from the depth camera are used. For {\itshape Body 2}, a single region modality that considers information from {\itshape Color Camera 2} and a depth modality that uses data from the depth camera are employed. Information from the modalities of {\itshape Body 1} and {\itshape Body 2} is combined in the respective optimizers {\itshape Optimizer 1} and {\itshape Optimizer 2}. All depth modalities model occlusions using depth renderers. Renderer objects were thereby initialized from a corresponding camera. This is indicated by dashed lines. Note that all renderers reference {\itshape Body 1} and {\itshape Body 2} to focus the scene on those bodies and ensure that they are fully visible and at the same time fill the rendered images. Geometry information that is required for the rendering is referenced from the {\itshape Renderer\+Geometry} object. In addition to modeling occlusions using renderers, depth measurements can also be considered. For this, {\itshape Region Modality 1} and {\itshape Region Modality 3} reference information from the {\itshape Depth Camera 1}, which is located close to {\itshape Color Camera 2}. To initialize the pose of both objects, two detectors that consider images from {\itshape Color Camera 1} are used. The pose is then refined by the {\itshape Refiner} object which takes into account all available information from {\itshape Optimizer 1} and {\itshape Optimizer 2}. The current predictions are visualized by {\itshape Viewer 1} which considers the scene provided by the {\itshape Renderer Geometry} and visualizes it on images from {\itshape Color Camera 1}. The entire process is coordinated by the {\itshape Tracker}, which references all required objects.\hypertarget{md_readme_autotoc_md9}{}\doxysubsection{Usage}\label{md_readme_autotoc_md9}
+As explained previously, {\itshape ICG} is a library that supports a wide variety of tracking scenarios. As a consequence, to start tracking, one has to first configure the tracker. For this, two options exist\+:
+
+
+\begin{DoxyItemize}
+\item One option is to use {\itshape C++} programming to set up and configure all objects according to ones scenario. An example that allows running the tracker on a sequence streamed from an Azure\+Kinect is shown in {\ttfamily examples/run\+\_\+on\+\_\+camera\+\_\+sequence.\+cpp}. The executable thereby takes the path to a directory and names of multiple bodies. The directory has to contain {\ttfamily Body} and {\ttfamily Static\+Detector} metafiles that are called {\ttfamily \texorpdfstring{$<$}{<}BODY\+\_\+\+NAME\texorpdfstring{$>$}{>}.yaml} file and {\ttfamily \texorpdfstring{$<$}{<}BODY\+\_\+\+NAME\texorpdfstring{$>$}{>}\+\_\+detector.\+yaml}. Similarly, {\ttfamily examples/run\+\_\+on\+\_\+recorded\+\_\+sequence.\+cpp} allows to run the tracker on a sequence that was recorded using {\ttfamily record\+\_\+camera\+\_\+sequence.\+cpp}. The executable allows the tracking of a single body that is detected using a {\ttfamily Manual\+Detector}. It requires the metafiles for a {\ttfamily Loader\+Color\+Camera}, {\ttfamily Body}, and {\ttfamily Manual\+Detector}, as well as the path to a temporary directory in which generated model files are stored.
+\item In addition to the usage as a library in combination with {\itshape C++} programming, the tracker can also be configured using a generator function together with a YAML file that defines the overall configuration. A detailed description on how to set up the YAML file is given in \href{generator.html}{\texttt{ Generator Configfile}}. An example that shows how to use a generator is shown in {\ttfamily examples/run\+\_\+generated\+\_\+tracker.\+cpp}. The executable requires a YAML file that is parsed by the {\ttfamily Generate\+Configured\+Tracker()} function to generate a {\ttfamily Tracker} object. The main YAML file thereby defines how individual objects are combined and allows to specify YAML metafiles for individual components that do not use default parameters. An example of a YAML file is given in {\ttfamily examples\textbackslash{}generator\+\_\+example\textbackslash{}config.\+yaml}.
+\end{DoxyItemize}
+
+In addition to constructors and setter methods, the parameters of all components can be defined in YAML metafiles. The most important metafiles and parameters are thereby\+:\hypertarget{md_readme_autotoc_md10}{}\doxysubsubsection{Body}\label{md_readme_autotoc_md10}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{geometry\_path: "{}INFER\_FROM\_NAME"{}}
+\DoxyCodeLine{geometry\_unit\_in\_meter: 1.0}
+\DoxyCodeLine{geometry\_counterclockwise: 1}
+\DoxyCodeLine{geometry\_enable\_culling: 1}
+\DoxyCodeLine{geometry2body\_pose: !!opencv-\/matrix}
+\DoxyCodeLine{  rows: 4}
+\DoxyCodeLine{  cols: 4}
+\DoxyCodeLine{  dt: d}
+\DoxyCodeLine{  data: [ 1., 0, 0, 0,}
+\DoxyCodeLine{          0, 1., 0, 0,}
+\DoxyCodeLine{          0, 0, 1., -\/0.006,}
+\DoxyCodeLine{          0, 0, 0, 1. ]}
+
+\end{DoxyCode}
+
+\begin{DoxyItemize}
+\item {\ttfamily geometry\+\_\+path}\+: path to wavefront obj file. Using {\ttfamily INFER\+\_\+\+FROM\+\_\+\+NAME} sets the path to {\ttfamily \texorpdfstring{$<$}{<}BODY\+\_\+\+NAME\texorpdfstring{$>$}{>}.obj}.
+\item {\ttfamily geometry\+\_\+unit\+\_\+in\+\_\+meter}\+: scale factor to scale the unit used in the wavefront obj file to meter.
+\item {\ttfamily geometry\+\_\+counterclockwise}\+: true if winding order of triangles in wavefront obj is defined counter-\/clockwise.
+\item {\ttfamily geometry\+\_\+enable\+\_\+culling}\+: true if faces that are not facing toward the camera should be culled.
+\item {\ttfamily geometry2body\+\_\+pose}\+: transformation that allows to set a different frame of reference for the object than defined by the wavefront obj file.
+\end{DoxyItemize}\hypertarget{md_readme_autotoc_md11}{}\doxysubsubsection{Depth\+Model / Region\+Model}\label{md_readme_autotoc_md11}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{model\_path: "{}INFER\_FROM\_NAME"{}}
+
+\end{DoxyCode}
+
+\begin{DoxyItemize}
+\item {\ttfamily model\+\_\+path}\+: path to .bin file where the sparse viewpoint model is stored or where it should be generated. Using {\ttfamily INFER\+\_\+\+FROM\+\_\+\+NAME} sets the path to {\ttfamily \texorpdfstring{$<$}{<}MODEL\+\_\+\+NAME\texorpdfstring{$>$}{>}.bin}.
+\end{DoxyItemize}\hypertarget{md_readme_autotoc_md12}{}\doxysubsubsection{Static\+Detector}\label{md_readme_autotoc_md12}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{body2world\_pose: !!opencv-\/matrix}
+\DoxyCodeLine{  rows: 4}
+\DoxyCodeLine{  cols: 4}
+\DoxyCodeLine{  dt: d}
+\DoxyCodeLine{  data: [0.607674, 0.786584, -\/0.10962, -\/0.081876,}
+\DoxyCodeLine{          0.408914, -\/0.428214, -\/0.805868, -\/0.00546736,}
+\DoxyCodeLine{          -\/0.680823, 0.444881, -\/0.58186, 0.618302,}
+\DoxyCodeLine{          0, 0, 0, 1 ]}
+
+\end{DoxyCode}
+
+\begin{DoxyItemize}
+\item {\ttfamily body2world\+\_\+pose}\+: transformation between body and world (typically camera frame) to which the body is set by the detector.
+\end{DoxyItemize}\hypertarget{md_readme_autotoc_md13}{}\doxysubsubsection{Manual\+Detector}\label{md_readme_autotoc_md13}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{reference\_points:}
+\DoxyCodeLine{  -\/ [ -\/0.0332, 0.0, 0.0]}
+\DoxyCodeLine{  -\/ [ 0.0192, -\/0.0332, 0.0]}
+\DoxyCodeLine{  -\/ [ 0.0192, 0.0332, 0.0]}
+\DoxyCodeLine{  -\/ [ 0.0, 0.0, 0.0]}
+\DoxyCodeLine{detector\_image\_path: "{}./detector\_image.png"{}}
+
+\end{DoxyCode}
+
+\begin{DoxyItemize}
+\item {\ttfamily reference\+\_\+points}\+: 3D points on the object surface given in the body frame. During manual detection, the user has to specify the corresponding 2D coordinates of those points in the image to define the object pose.
+\item {\ttfamily detector\+\_\+image\+\_\+path}\+: optional image that illustrates on which points the user has to click.
+\end{DoxyItemize}\hypertarget{md_readme_autotoc_md14}{}\doxysubsubsection{Loader\+Color\+Camera / Loader\+Depth\+Camera}\label{md_readme_autotoc_md14}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{load\_directory: "{}./"{}}
+\DoxyCodeLine{intrinsics:}
+\DoxyCodeLine{   f\_u: 638.633}
+\DoxyCodeLine{   f\_v: 638.377}
+\DoxyCodeLine{   pp\_x: 639.451}
+\DoxyCodeLine{   pp\_y: 366.379}
+\DoxyCodeLine{   width: 1280}
+\DoxyCodeLine{   height: 720}
+\DoxyCodeLine{camera2world\_pose: !!opencv-\/matrix}
+\DoxyCodeLine{   rows: 4}
+\DoxyCodeLine{   cols: 4}
+\DoxyCodeLine{   dt: f}
+\DoxyCodeLine{   data: [ 1., 0., 0., 0.,}
+\DoxyCodeLine{            0., 1., 0., 0.,}
+\DoxyCodeLine{            0., 0., 1., 0.,}
+\DoxyCodeLine{            0., 0., 0., 1. ]}
+\DoxyCodeLine{depth\_scale: 0.001    \# only for depth camera}
+\DoxyCodeLine{image\_name\_pre: "{}color\_camera\_image\_"{}}
+\DoxyCodeLine{load\_index: 0}
+\DoxyCodeLine{n\_leading\_zeros: 0}
+\DoxyCodeLine{image\_name\_post: "{}"{}}
+\DoxyCodeLine{load\_image\_type: "{}png"{}}
+
+\end{DoxyCode}
+
+\begin{DoxyItemize}
+\item {\ttfamily load\+\_\+directory}\+: directory from which images are loaded.
+\item {\ttfamily intrinsics}\+: intrinsics of the camera that was used to record images, with fu, fv, ppu, ppv, width, and height, respectively.
+\item {\ttfamily depth\+\_\+scale}\+: scale with which pixel values have to be multiplied to get the depth in meter. (only required for depth cameras)
+\item {\ttfamily image\+\_\+name\+\_\+pre}\+: text at the beginning of image name, before load\+\_\+index.
+\item {\ttfamily load\+\_\+index}\+: index of the first image that is loaded.
+\item {\ttfamily n\+\_\+leading\+\_\+zeros}\+: minimum number of digits used in the image name with zero padding to reach correct number.
+\item {\ttfamily image\+\_\+name\+\_\+post}\+: text at the end of image name, after load\+\_\+index.
+\item {\ttfamily load\+\_\+image\+\_\+type}\+: file format of images.
+\end{DoxyItemize}
+
+To start tracking your own objects, we recommend defining your own metafile for {\ttfamily Body} and {\ttfamily Static\+Detector} and use the {\ttfamily examples/run\+\_\+on\+\_\+camera\+\_\+sequence.\+cpp}. Note that depending on the parameters for the {\ttfamily Run\+Tracker\+Process} function of the {\ttfamily Tracker} class, detection and tracking will not start automatically. To start the detection, please press the D key on your keyboard. For tracking, the T key has to be pressed. To quit the application, press Q. If you would like to use the Real\+Sense camera instead of the Azure\+Kinect, please replace {\ttfamily \#include \texorpdfstring{$<$}{<}icg/azure\+\_\+kinect\+\_\+camera.\+h\texorpdfstring{$>$}{>}} with {\ttfamily \#include \texorpdfstring{$<$}{<}icg/realsense\+\_\+camera.\+h\texorpdfstring{$>$}{>}} and all occurences of {\ttfamily Azure\+Kinect\+Color\+Camera} and {\ttfamily Azure\+Kinect\+Depth\+Camera} with {\ttfamily Real\+Sense\+Color\+Camera} and {\ttfamily Real\+Sense\+Depth\+Camera}. If you would like to use another camera than the Real\+Sense or Azure Kinect, we encourage you to create a class similar to the {\ttfamily Azure\+Kinect\+Camera} class in src/azure\+\_\+kinect\+\_\+camera.\+cpp. To use results from the tracker in your own application, you can implement your own {\ttfamily Publisher} class that implements the method {\ttfamily Update\+Publisher()}.
+
+In addition to this short overview, detailed information on all objects and parameters can be found in the \href{annotated.html}{\texttt{ Documentation}}, which can be generated using {\itshape Doxygen} with {\itshape dot}.\hypertarget{md_readme_autotoc_md15}{}\doxysubsection{Evaluation}\label{md_readme_autotoc_md15}
+The code in {\ttfamily examples/evaluate\+\_\+\texorpdfstring{$<$}{<}DATASET\+\_\+\+NAME\texorpdfstring{$>$}{>}\+\_\+dataset.\+cpp} and {\ttfamily examples/parameters\+\_\+study\+\_\+\texorpdfstring{$<$}{<}DATASET\+\_\+\+NAME\texorpdfstring{$>$}{>}.cpp} contains everything for the evaluation on the {\itshape YCB-\/\+Video}, {\itshape OPT}, {\itshape Choi}, and {\itshape RBOT} datasets. For the evaluation, please download the \href{https://rse-lab.cs.washington.edu/projects/posecnn/}{\texttt{ YCB-\/\+Video}}, \href{http://media.ee.ntu.edu.tw/research/OPT/}{\texttt{ OPT}}, \href{http://people.ece.umn.edu/~cchoi/research_rgbdtracking.html}{\texttt{ Choi}}, or \href{http://cvmr.info/research/RBOT/}{\texttt{ RBOT}} dataset and adjust the {\ttfamily dataset\+\_\+directory} in the source code. Note that model files (e.\+g. 002\+\_\+master\+\_\+chef\+\_\+can\+\_\+depth\+\_\+model.\+bin, 002\+\_\+master\+\_\+chef\+\_\+can\+\_\+region\+\_\+model.\+bin, ...) will be created automatically and are stored in the specified {\ttfamily external\+\_\+directory}. For the evaluation of the {\itshape YCB-\/\+Video} dataset, please unzip {\ttfamily poses\+\_\+ycb-\/video.\+zip} and store its content in the respective {\ttfamily external\+\_\+directory}. For the {\itshape Choi} dataset, the {\itshape Matlab} script in {\ttfamily examples/dataset\+\_\+converter/convert\+\_\+choi\+\_\+dataset.\+m} has to be executed to convert .pcd files into .png images. Also, using a program such as {\itshape Mesh\+Lab}, all model files have to be converted from .ply to .obj files and stored in the folder {\ttfamily external\+\_\+directory/models}. Both the {\itshape OPT} and {\itshape RBOT} datasets work without any manual changes.\hypertarget{md_readme_autotoc_md16}{}\doxysection{Citation}\label{md_readme_autotoc_md16}
+If you find our work useful, please cite us with\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{@InProceedings\{Stoiber\_2022\_CVPR,}
+\DoxyCodeLine{    author    = \{Stoiber, Manuel and Sundermeyer, Martin and Triebel, Rudolph\},}
+\DoxyCodeLine{    title     = \{Iterative Corresponding Geometry: Fusing Region and Depth for Highly Efficient 3D Tracking of Textureless Objects\},}
+\DoxyCodeLine{    booktitle = \{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\},}
+\DoxyCodeLine{    month     = \{June\},}
+\DoxyCodeLine{    year      = \{2022\},}
+\DoxyCodeLine{    pages     = \{6855-\/6865\}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+ 

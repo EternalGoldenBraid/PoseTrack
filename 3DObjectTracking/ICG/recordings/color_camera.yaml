@@ -1,0 +1,21 @@
+%YAML:1.0
+---
+load_directory: "./"
+intrinsics:
+   f_u: 6.7930590820312500e+02
+   f_v: 6.7779943847656250e+02
+   pp_x: 4.9101269531250000e+02
+   pp_y: 2.6906619262695312e+02
+   width: 960
+   height: 540
+camera2world_pose: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [ 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
+       1. ]
+image_name_pre: color_camera_image_
+load_index: 0
+n_leading_zeros: 0
+image_name_post: ""
+load_image_type: png

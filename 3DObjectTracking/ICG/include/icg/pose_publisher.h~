@@ -1,0 +1,101 @@
+#include <filesystem/filesystem.h>
+#include <icg/body.h>
+#include <icg/camera.h>
+#include <icg/common.h>
+#include <icg/modality.h>
+#include <icg/region_model.h>
+#include <icg/renderer.h>
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <iostream>
+#include <memory>
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <vector>
+
+namespace icg {
+
+/**
+ * \brief \ref Modality class that implements a region-based modality, which
+ * uses information from a \ref ColorCamera and \ref RegionModel to calculate
+ * the gradient vector and Hessian matrix that are used by the \ref Optimizer to
+ * update the \ref Body pose.
+ *
+ * \details The modality is able to measure occlusions using
+ * images from a referenced \ref DepthCamera that is close to the referenced
+ * \ref ColorCamera and model occlusions using renderings from a \ref
+ * FocusedDepthRenderer object.
+ *
+ * @param color_camera_ptr referenced \ref ColorCamera from which images are
+ * taken.
+ * @param region_model_ptr referenced \ref RegionModel that provides views from
+ * a *Sparse Viewpoint Model*.
+ * @param depth_camera_ptr referenced \ref DepthCamera that is used to for
+ * measured occlusion handling.
+ * @param depth_renderer_ptr referenced \ref FocusedDepthRenderer that is used
+ * for modeled occlusion handling.
+ * @param n_lines number of correspondence lines
+ */
+class PosePublisher: public Publisher {
+ private:
+  static constexpr int somevar = 5;
+
+ public:
+  // Constructors and setup methods
+  RegionModality(const std::string &name,
+                 const std::filesystem::path &metafile_path,
+                 const std::shared_ptr<Body> &body_ptr,
+                 const std::shared_ptr<ColorCamera> &color_camera_ptr,
+                 const std::shared_ptr<RegionModel> &region_model_ptr);
+  PosePublisher(const std::string &name);
+  bool SetUp() override;
+  bool UpdatePublisher() override;
+
+ private:
+  //// Helper method for setup
+  //bool LoadMetaData();
+
+  //// Helper methods for precalculation of internal data
+  //void PrecalculateFunctionLookup();
+  //void SetImshowVariables();
+
+  //// Helper methods for precalculation of referenced data and changing data
+  //void PrecalculateCameraVariables();
+  //void PrecalculateIterationDependentVariables(int corr_iteration);
+
+  //// Helper methods for histogram calculation
+  //void AddLinePixelColorsToTempHistograms(bool handle_occlusions);
+
+  //// Helper methods for CalculateCorrespondences
+  //void CalculateBasicLineData(const RegionModel::DataPoint &data_point,
+  //                            DataLine *data_line) const;
+  //// Helper methods for visualization
+  //void ShowAndSaveImage(const std::string &title, int save_index,
+  //                      const cv::Mat &image) const;
+
+  //// Other helper methods
+  //bool IsSetup() const;
+
+  //// Internal data objects
+  //std::vector<float> temp_histogram_f_;
+
+  //// Pointers to referenced objects
+  //std::shared_ptr<ColorCamera> color_camera_ptr_ = nullptr;
+  //std::shared_ptr<DepthCamera> depth_camera_ptr_ = nullptr;
+  //std::shared_ptr<RegionModel> region_model_ptr_ = nullptr;
+  //std::shared_ptr<FocusedDepthRenderer> depth_renderer_ptr_ = nullptr;
+
+  //// Precalculated variables for poses (continuously changing)
+  //Transform3fA body2camera_pose_;
+  //Transform3fA body2depth_camera_pose_;
+  //Eigen::Matrix3f body2camera_rotation_;
+  //Eigen::Matrix<float, 2, 3> body2camera_rotation_xy_;
+
+  //// State variables
+  //int first_iteration_ = 0;
+};
+
+}  // namespace icg
+
+#endif  // ICG_INCLUDE_ICG_REGION_MODALITY_H_
