@@ -36,11 +36,13 @@ def main(args):
     for object_recording in f[grp]:
         print("Object:", object_recording)
 
+        # Load object frames
         obj_path = Path(f.name, grp, object_recording)
         rendered_frames = False
         if 'rendered_frames' in f[str(obj_path)].keys():
-            frames = f[str(obj_path)]['rendered_frames'][:][None, ...]
             rendered_frames = True
+            frames = f[str(obj_path)]['rendered_frames'][:][None, ...]
+            poses = f[str(obj_path/'poses')][:]
         else:
             color_frames = f[str(obj_path/'color_frames')][:]
             depth_frames = f[str(obj_path/'depth_frames')][:]
@@ -49,12 +51,12 @@ def main(args):
         n_frames = frames[0].shape[0]
         duration = int(n_frames/fps)
         
-        # Streaming loop
+        # Playback frames
         for count in range(n_frames):
             
             if rendered_frames:
                 images = frames[0][count].astype(np.uint8)
-                print("Points:", f[str(obj_path/'poses')][:])
+                print("Pose:", poses[count])
             else:
                 color_image = frames[0][count].astype(np.uint8)
                 depth_image = frames[1][count]
