@@ -149,7 +149,7 @@ def main(args):
                         threshold, H_init,
                         #o3d.pipelines.registration.TransformationEstimationPointToPoint(),
                         o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-                        #o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=1)
+                        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=1)
                         #o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=10)
                         )
                     dH = torch.tensor(reg_p2p.transformation).to(torch.float32)
