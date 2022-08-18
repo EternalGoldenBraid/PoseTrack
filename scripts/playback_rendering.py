@@ -111,7 +111,7 @@ def main(args):
             from PIL import Image
             gif_path = f"data/renderings/{args.file}.gif"
             print("Saving gif to:", gif_path)
-            imgs = [Image.fromarray(frame) for frame in frames.astype(np.uint8)]
+            imgs = [Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), mode='RGB') for frame in frames.astype(np.uint8)]
             # duration is the number of milliseconds between frames; this is 40 frames per second
             imgs[0].save(gif_path, save_all=True, append_images=imgs[1:], duration=int(1000/fps), loop=0)
             print("Done")
