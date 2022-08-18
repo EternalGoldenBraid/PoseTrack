@@ -257,7 +257,6 @@ def main(args):
                     has_init_pose = False
                     is_tracked = False
 
-                time.sleep(1)
             elif key & 0xFF == ord(save_track):
                 # Skip intermediate drawing and process all frames in a batch.
                 if not has_init_pose:
