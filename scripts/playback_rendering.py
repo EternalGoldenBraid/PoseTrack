@@ -26,10 +26,11 @@ def main(args):
     depth_scale = f['meta']["depth_scale"][:]
     cam_K = f['meta']["camera_intrinsic"][:]
 
-    if args.framerate == 0:
-        fps = f['meta']["framerate"][0]
-    else:
-        fps = args.framerate
+    fps = f['meta']["framerate"][0]
+    #if args.framerate == 0:
+    #    fps = f['meta']["framerate"][0]
+    #else:
+    #    fps = args.framerate
 
     print("Playback data:", file, grp, " at framerate:", fps)
 
@@ -101,8 +102,20 @@ def main(args):
             # Press esc or 'q' to close the image window
             if key & 0xFF == ord('q') or key == 27:
                 break
+
+        cv2.destroyAllWindows()
+
+        # Save as gif
+        # TODO Add flag
+        if True:
+            from PIL import Image
+            gif_path = f"data/renderings/{args.file}.gif"
+            print("Saving gif to:", gif_path)
+            imgs = [Image.fromarray(frame) for frame in frames.astype(np.uint8)]
+            # duration is the number of milliseconds between frames; this is 40 frames per second
+            imgs[0].save(gif_path, save_all=True, append_images=imgs[1:], duration=int(1000/fps), loop=0)
+            print("Done")
         
-    cv2.destroyAllWindows()
     f.close()
 
 
@@ -119,8 +132,8 @@ if __name__=="__main__":
                         help='Scenarios')
     parser.add_argument('-d','--duration', dest='duration',
                         type=int, default=10, help='Recording duration')
-    parser.add_argument('-fps, --framerate', dest='framerate',
-                        type=int, default=30, choices=[0,6,30,90], help='Recording framerate')
+    #parser.add_argument('-fps, --framerate', dest='framerate',
+    #                    type=int, default=30, choices=[0,6,30,90], help='Recording framerate')
     parser.add_argument('-f', '--file', dest='file', required=True, help="Filename")
 
 

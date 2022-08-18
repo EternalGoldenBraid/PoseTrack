@@ -17,6 +17,7 @@ from scipy import stats
 from matplotlib import pyplot as plt
 import open3d as o3d
 from tqdm import tqdm
+from time import time
 
 
 from ipdb import iex
@@ -48,6 +49,7 @@ def main(args):
 
     cfg.DATASET_NAME = 'huawei_box'        # dataset name
     cfg.USE_ICP = args.icp
+    cfg.ICP_max_iterations = args.icp_ove6d_max_iters
 
     # Load data
     grp = args.group
@@ -109,10 +111,11 @@ def main(args):
     is_tracked = False
     has_init_pose = False
     H_init = torch.eye(4)
-    threshold = 0.02
+    threshold = 0.02 # What's this?
     new_cloud = o3d.geometry.PointCloud()
     old_cloud = o3d.geometry.PointCloud()
-    icp_max_iters = 50
+    #icp_max_iters = 50
+    icp_max_iters = args.icp_track_max_iters
 
     ## Playback setup
     alpha = 0.5 # For blending segmentated image.
@@ -144,8 +147,8 @@ def main(args):
 
     # Streaming loop
     trackers = ['ove6d', 'icp']
-    for tracker in tqdm(trackers):
-        for count in tqdm(range(n_frames)):
+    for tracker in tqdm(trackers, desc='tracker_loop', position=0, leave=True):
+        for count in tqdm(range(n_frames), desc='frames_loop', position=1, leave=True):
         
             depth_image = depth_frames[count]
             color_image = color_frames[count].astype(np.uint8)
@@ -253,6 +256,8 @@ def main(args):
                 else: 
                     has_init_pose = False
                     is_tracked = False
+
+                time.sleep(1)
             elif key & 0xFF == ord(save_track):
                 # Skip intermediate drawing and process all frames in a batch.
                 if not has_init_pose:
@@ -397,6 +402,8 @@ if __name__=="__main__":
     parser.add_argument('--save', dest='save_rendered', action=argparse.BooleanOptionalAction, help="Save rendered files to file_out.")
     parser.add_argument('-icp', dest='icp', action=argparse.BooleanOptionalAction)
 
+    parser.add_argument('--icp_track_max_iters', dest='icp_track_max_iters', type=int)
+    parser.add_argument('--icp_ove6d_max_iters', dest='icp_ove6d_max_iters', type=int)
     
     args = parser.parse_args()
 
