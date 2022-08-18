@@ -34,32 +34,43 @@ def main(args):
     print("Playback data:", file, grp, " at framerate:", fps)
 
     for object_recording in f[grp]:
-        print("Object:", object_recording)
+        print("Recorded object:", object_recording)
+
 
         # Load object frames
         obj_path = Path(f.name, grp, object_recording)
         rendered_frames = False
-        if 'rendered_frames' in f[str(obj_path)].keys():
+        rm = ['color_frames', 'depth_frames']
+        cad_list = [i for i in f[str(obj_path)].keys() if i not in rm]
+        import pdb; pdb.set_trace()
+        #if 'rendered_frames' in f[str(obj_path)].keys():
+        if len(cad_list) > 0:
+            # Rendered frames exist for some cad model(s).
             rendered_frames = True
-            frames = f[str(obj_path)]['rendered_frames'][:][None, ...]
-            poses = f[str(obj_path/'poses')][:]
+            # Combine rendered cad models to single window.
+            #import pdb; pdb.set_trace()
+            frames = np.concatenate(np.array([f[str(obj_path/cad_model/'rendered_frames')] for cad_model in cad_list]) ,axis=2)
+            #frames = f[str(obj_path)]['rendered_frames'][:][None, ...]
+            #poses = f[str(obj_path/'poses')][:]
+            n_frames = frames.shape[0]
         else:
             color_frames = f[str(obj_path/'color_frames')][:]
             depth_frames = f[str(obj_path/'depth_frames')][:]
-            frames = np.stack((color_frames, depth_frames), axis=0)
+            #frames = np.stack((color_frames, depth_frames), axis=0)
+            n_frames = color_frames.shape[0]
 
-        n_frames = frames[0].shape[0]
         duration = int(n_frames/fps)
         
         # Playback frames
+        print("Playing n_frames:", n_frames, ",duration:", duration, ",fps:",fps)
         for count in range(n_frames):
             
             if rendered_frames:
-                images = frames[0][count].astype(np.uint8)
-                print("Pose:", poses[count])
+                images = frames[count].astype(np.uint8)
+                #print("Pose:", poses[count])
             else:
-                color_image = frames[0][count].astype(np.uint8)
-                depth_image = frames[1][count]
+                color_image = color_frames[count].astype(np.uint8)
+                depth_image = depth_frames[count]
                 #depth_image = depth_frames[count]
                 #color_image = color_frames[count].astype(np.uint8)
         

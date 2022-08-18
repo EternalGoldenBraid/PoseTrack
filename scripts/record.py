@@ -72,7 +72,6 @@ def main(args):
             else:
                 images = np.hstack((color_image, depth_colormap))
 
-            
             cv2.putText(images, f"fps: {(1/(perf_counter()-fps_start)):2f}", (10,10), cv2.FONT_HERSHEY_PLAIN, 0.5, (255,0,0), 1)
             cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
             cv2.imshow('Align Example', images)
@@ -93,10 +92,10 @@ def main(args):
             print("No recorded frames")
             return
 
-        filename = "_".join([obj.name for obj in (args.obj_id)])
+        filename = "_".join([obj for obj in (args.obj_name)])
         
-        with h5py.File(f"data/{args.file}.hdf5", "a") as f:
-            if len(args.obj_id) == 1:
+        with h5py.File(f"data/recordings/{args.file}.hdf5", "a") as f:
+            if len(args.obj_name) == 1:
                 group = "single_object"
             else:
                 group = "multi_object"
@@ -114,13 +113,15 @@ def main(args):
                 f['meta'].create_dataset(name="depth_scale", shape=1, dtype='f')
                 f['meta'].create_dataset(name="camera_intrinsic", shape=cam_K.numpy().shape, dtype='f')
                 f['meta'].create_dataset(name="framerate", shape=1, dtype='i')
+                f['meta'].create_dataset(name="color_shape", shape=len(color_image.shape), dtype='i')
+                f['meta'].create_dataset(name="depth_shape", shape=len(depth_image.shape), dtype='i')
 
-            print("Saving to scenario:", group)
+            path_ = Path(group,filename)
+            print("Saving to path", path_)
             if filename not in f[group]:
                 print("Creating dataset:", filename)
                 #f[group].create_dataset(name=filename+"/color_frames", shape=color_frames.shape, dtype='i8')
                 #f[group].create_dataset(name=filename+"/depth_frames", shape=depth_frames.shape, dtype='f')
-                path_ = Path(group,filename)
                 f.create_dataset(name=str(path_/"color_frames"), shape=color_frames.shape, dtype='i8')
                 f.create_dataset(name=str(path_/"depth_frames"), shape=depth_frames.shape, dtype='f')
 
@@ -131,8 +132,13 @@ def main(args):
             f['meta']["depth_scale"][:] = depth_scale
             f['meta']["camera_intrinsic"][:] = cam_K.numpy()
             f['meta']["framerate"][:] = fps
+            f['meta']["color_shape"][:] = color_image.shape
+            f['meta']["depth_shape"][:] = depth_image.shape
 
-        print(f"Saved {n_frames} frames of shape {depth_frames.shape} and {color_frames.shape} to {filename}.")
+        print(f"""
+        Saved {n_frames} frames of shape {depth_frames.shape} and {color_frames.shape} to file {args.file}. 
+        HDF5 Path: {path_}'/'*_frames, * = color_frames and depth_frames respectively.
+        """)
 
     finally:
         del cam
@@ -167,18 +173,18 @@ if __name__=="__main__":
         eraser_lowq = 10
         eraser_highq = 11
         #eraser_lowq = 10
+        box_synth = 12
 
     
     parser = argparse.ArgumentParser(prog='demo',
             description='Superimpose rotated pointcloud onto video.')
 
-    parser.add_argument('-o','--object', dest='obj_id',
-                        type=ObjectIds.argtype, default=ObjectIds.box, 
-                        nargs='+', choices=ObjectIds,
-                        help='Object names')
+    parser.add_argument('-o','--object_name', dest='obj_name',
+                        #type=ObjectIds.argtype, default=ObjectIds.box, 
+                        type=str, nargs='+', help='Recorded object name.')
     parser.add_argument('-d','--duration', dest='duration',
                         type=int, default=10, help='Recording duration in seconds.')
-    parser.add_argument('--fps, --framerate', dest='framerate',
+    parser.add_argument('--fps', '--framerate', dest='framerate',
                         type=int, default=60, choices=[6,30,60], help='Recording framerate.')
     parser.add_argument('-f', '--file', dest='file', type=str, required=True, help="Filename")
 
@@ -197,8 +203,6 @@ if __name__=="__main__":
                     TODO:
                     """)
 
-
-    
     args = parser.parse_args()
 
     main(args)

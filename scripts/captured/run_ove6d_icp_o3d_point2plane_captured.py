@@ -51,10 +51,10 @@ def main(args):
 
     # Load data
     grp = args.group
-    file = f"{args.file}.hdf5"
-    f = h5py.File(f"data/{file}", "r")
-    if args.obj_id.name not in f[grp]:
-        print("Object not found in recordings.")
+    file_in = f"{args.file_in}.hdf5"
+    f = h5py.File(f"data/recordings/{file_in}", "r")
+    if args.obj_name not in f[grp]:
+        print("Object name not found in recordings:", f[grp].keys())
         return -1
     depth_scale = f['meta']["depth_scale"][:]
     cam_K = torch.tensor(f['meta']["camera_intrinsic"][:])
@@ -119,21 +119,32 @@ def main(args):
     render_color = [(255, 0, 0), (0,0, 255)]
     to_draw = True
 
-    for obj_recording in f[grp]:
+    ## Load recordings
+    #for args.obj_name in f[grp][args.obj_name]:
+    obj_path = Path(f.name, grp, args.obj_name)
+    color_frames = f[str(obj_path/'color_frames')][:]
+    depth_frames = f[str(obj_path/'depth_frames')][:]
+    f.close()
+    rendered_frames = np.empty_like(color_frames, dtype=np.uint8)
 
-        obj_path = Path(f.name, grp, obj_recording)
-        color_frames = f[str(obj_path/'color_frames')][:]
-        depth_frames = f[str(obj_path/'depth_frames')][:]
-        #color_frames = f[grp][obj_recording]['color_frames'][:]
-        #depth_frames = f[grp][obj_recording]['depth_frames'][:]
-        rendered_frames = np.empty_like(color_frames, dtype=np.uint8)
+    n_frames = color_frames.shape[0]
+    duration = int(n_frames/fps)
 
-        n_frames = color_frames.shape[0]
-        duration = int(n_frames/fps)
+    poses = np.eye(4, 4)[None,...].repeat(repeats=n_frames, axis=0) # In homo form.
 
-        poses = np.empty((n_frames, 4, 4)) # In homo form.
-        
-        # Streaming loop
+    ## CV2 window Keybinds
+    save = 'r'
+    save_track = 's'
+    track = 't'
+    quit = 'q'
+    print("Save pose estimation without tracking:", save)
+    print("Save and track:", save_track)
+    print("Track without saving", track)
+    print("Quit", quit)
+
+    # Streaming loop
+    trackers = ['ove6d', 'icp']
+    for tracker in trackers:
         for count in tqdm(range(n_frames)):
         
             depth_image = depth_frames[count]
@@ -223,51 +234,64 @@ def main(args):
             else:
                 images = np.hstack((color_image, depth_colormap))
 
-            
             if to_draw:
                 cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
                 cv2.imshow('Align Example', images)
             #key = cv2.waitKey(int(1000/fps))
             key = cv2.waitKey(1)
             # Press esc or 'q' to close the image window
-            if key & 0xFF == ord('q') or key == 27:
+            if key & 0xFF == ord(quit) or key == 27:
                 cv2.destroyAllWindows()
                 break
-            elif key & 0xFF == ord('t') and not np.isnan(R).all():
+            elif key & 0xFF == ord(track) and not np.isnan(R).all():
                 if not has_init_pose:
                     has_init_pose = True
                 else: 
                     has_init_pose = False
                     is_tracked = False
-            elif key & 0xFF == ord('s'):
+            elif key & 0xFF == ord(save_track):
                 # Skip intermediate drawing and process all frames in a batch.
                 if not has_init_pose:
                     has_init_pose = True
                 to_draw = False
                 cv2.destroyAllWindows()
+            elif key & 0xFF == ord(save):
+                # Skip intermediate drawing and process all frames in a batch.
+                to_draw = False
+                cv2.destroyAllWindows()
 
 
-        f.close()
         if not to_draw:
             #if args.save_rendered:
             if True:
-                f = h5py.File(f"data/{file}", "a")
+                file_out = f"{args.file_out}.hdf5"
+                f = h5py.File(f"data/renderings/{file_out}", "a")
+                cad_path = Path(f"{grp}/{args.obj_name}/{args.obj_id.name}")
 
-                keys =  f[grp][obj_recording].keys()
-                try:
-                    if 'rendered_frames' not in keys or 'poses' not in keys:
-                        if 'rendered_frames' not in keys:
-                            f[grp][obj_recording].create_dataset(name='rendered_frames', data=rendered_frames)
-                        if 'poses' not in keys:
-                            f[grp][obj_recording].create_dataset(name='poses', data=poses)
-                    else:
-                        ### TODO: Overwrites everything.
-                        f[grp][obj_recording]['rendered_frames'][:] = rendered_frames
-                        f[grp][obj_recording]['poses'][:] = poses
-                except Exception as e:
-                    print(e)
-                    import pdb; pdb.set_trace()
-                print("Saved rendered frames to file", args.file+"hd5f", " in path:", obj_path/'rendered_frames')
+                if not grp in f:
+                    print("Creating group:", grp)
+                    f.create_group(grp)
+
+                    with h5py.File(f"data/recordings/{file_in}", "r") as f_in:
+                        #f.create_dataset('meta', data=f_in['meta'])
+                        f_in.copy('meta', f)
+
+                # TODO optimize this.
+                if args.obj_name not in f[grp].keys():
+                    for tracker_ in trackers:
+                        f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
+                        f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
+                elif args.obj_id.name not in f[grp][args.obj_name]:
+                    for tracker_ in trackers:
+                        f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
+                        f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
+
+                f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/rendered_frames"][:]=rendered_frames
+                f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/poses"][:]=poses
+
+                print("Saved rendered frames to file", args.file_out+".hd5f", " in path:", 
+                        obj_path/args.obj_id.name/tracker/'rendered_frames', "and",
+                        obj_path/args.obj_id.name/tracker/'poses')
 
             for frame in rendered_frames:
                 cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
@@ -276,7 +300,24 @@ def main(args):
                 if key & 0xFF == ord('q') or key == 27:
                     cv2.destroyAllWindows()
                     break
+
+            #r = input("Save as video? [y/n]")
+            #if r.lower() == 'y':
+            #    name = input("name: ")
+            #    writer = cv2.VideoWriter(f"{name}.avi",
+            #    #cv2.VideoWriter_fourcc(*"MJPG"), 30,(640,480))
+            #    cv2.VideoWriter_fourcc(*"MJPG"), fps,(rendered_frames.shape[1], rendered_frames.shape[0]))
+
+            #    for frame in rendered_frames:
+            #        #writer.write(np.random.randint(0, 255, (480,640,3)).astype('uint8'))
+            #        writer.write(frame)
+
+            #    writer.release()
         f.close()
+        
+        # This for next round icp if first run was ove6d only.
+        to_draw = True
+
 
 
 
@@ -310,6 +351,7 @@ if __name__=="__main__":
         eraser_lowq = 10
         eraser_highq = 11
         #eraser_lowq = 10
+        box_synth = 12
 
 
     
@@ -317,9 +359,11 @@ if __name__=="__main__":
             description='Superimpose rotated pointcloud onto video.')
 
     parser.add_argument('-o','--object', dest='obj_id',
-                        type=ObjectIds.argtype, default=ObjectIds.box,
-                        choices=ObjectIds,
-                        help='Object names')
+                        type=ObjectIds.argtype, default=ObjectIds.box, choices=ObjectIds,
+                        help='Object cad model to be used for pose estimation and rendering.')
+    parser.add_argument('--object_name', dest='obj_name',
+                        type=str, help='Recorded object name.')
+
     parser.add_argument('--scenario', dest='group',
                         type=str, default='single_object',
                         choices=['single_object', 'single_object_occluded',
@@ -338,7 +382,8 @@ if __name__=="__main__":
                         contour: OpenCV based edge detection ...,
                         TODO:
                         """)
-    parser.add_argument('-f', '--file', dest='file', required=True, help="Filename")
+    parser.add_argument('-fin', '--file_in', dest='file_in', required=True, help="Filename of the recording.")
+    parser.add_argument('-fout', '--file_out', dest='file_out', required=True, help="Filename of the output.")
     ### Python < 3.9 TODO: Set this up.
     #parser.add_argument('--feature', action='store_true', dest='render_mesh')
     #parser.add_argument('--no-feature', dest='render_mesh', action='store_false')

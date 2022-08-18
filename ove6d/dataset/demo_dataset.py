@@ -97,12 +97,16 @@ class Dataset():
         
         P = self.cam_K_np.dot(R.dot(self.point_cloud[obj_id].T) + t).squeeze()
         P = P // P[-1,:]
-        print(P)
 
         if P[1].max() >= self.cam_height or P[0].max() >= self.cam_width:
             return image, False
         P = P.astype(np.int32)
-        image = cv2.fillPoly(image, pts=np.array(P.T[self.faces[obj_id][:,:2]][:,:,:2]), color=color)
+
+        # Does not fill the triangels since all are passed as a single batch.
+        # Iterating over earch triangle and rendering one by one results in fill.
+        image = cv2.fillPoly(image, pts=np.array(P.T[self.faces[obj_id]][:,:,:2]), color=color)
+        #image = cv2.drawContours(image=image, contourIdx=-1, color=color, thickness=-1, 
+                #contours=np.array(P.T[self.faces[obj_id]][:,:,:2]))
 
         return image, True
 

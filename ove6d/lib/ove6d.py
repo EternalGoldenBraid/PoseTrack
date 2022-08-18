@@ -9,7 +9,6 @@ import torch.nn.functional as F
 #from lib import geometry, rendering, three, preprocess, pplane_ICP, preprocess
 from . import geometry, rendering, three, preprocess, pplane_ICP, preprocess
 
-from ipdb import iex
 
 
 def rotation_to_position(R):
@@ -118,7 +117,6 @@ def input_zoom_preprocess(input_depth, input_mask, intrinsic, device, target_zoo
     return input_zoom_depths, input_translations
 
 
-#@iex
 def viewpoint_sampling_and_encoding(model_func, obj_model_file, obj_diameter, config, intrinsic, device):
     render_width = config.RENDER_WIDTH
     render_height = config.RENDER_HEIGHT
@@ -316,7 +314,6 @@ def OVE6D_translation_estimation(est_R, est_t, intrinsic, obj_scene, obj_render)
     refined_est_t = 2 * est_t - est_syn_t
     return refined_est_t
 
-@iex
 def OVE6D_mask_full_pose(model_func, obj_depth, obj_mask, obj_codebook, cam_K, config, obj_renderer, device, obj_context):
     """
     Perform OVE7D with given single mask 
