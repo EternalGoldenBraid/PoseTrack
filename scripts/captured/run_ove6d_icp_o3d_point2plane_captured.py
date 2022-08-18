@@ -144,7 +144,7 @@ def main(args):
 
     # Streaming loop
     trackers = ['ove6d', 'icp']
-    for tracker in trackers:
+    for tracker in tqdm(trackers):
         for count in tqdm(range(n_frames)):
         
             depth_image = depth_frames[count]
@@ -225,6 +225,10 @@ def main(args):
                              t=t[transform_idx].numpy()[...,None].astype(np.float32),
                              image=color_image.copy(), color=color)
 
+                # Set auto tracking after initial pose if tracker is icp
+                if tracker == 'icp' and not np.isnan(R).all():
+                    has_init_pose = True
+
                 rendered_frames[count] = color_image
                 mask_ = masks.sum(axis=0, dtype=np.uint8)
                 images = np.hstack([ 
@@ -261,58 +265,58 @@ def main(args):
                 cv2.destroyAllWindows()
 
 
-        if not to_draw:
-            #if args.save_rendered:
-            if True:
-                file_out = f"{args.file_out}.hdf5"
-                f = h5py.File(f"data/renderings/{file_out}", "a")
-                cad_path = Path(f"{grp}/{args.obj_name}/{args.obj_id.name}")
+        if args.save_rendered:
+            file_out = f"{args.file_out}.hdf5"
+            f = h5py.File(f"data/renderings/{file_out}", "a")
+            cad_path = Path(f"{grp}/{args.obj_name}/{args.obj_id.name}")
 
-                if not grp in f:
-                    print("Creating group:", grp)
-                    f.create_group(grp)
+            if not grp in f:
+                print("Creating group:", grp)
+                f.create_group(grp)
 
-                    with h5py.File(f"data/recordings/{file_in}", "r") as f_in:
-                        #f.create_dataset('meta', data=f_in['meta'])
-                        f_in.copy('meta', f)
+                with h5py.File(f"data/recordings/{file_in}", "r") as f_in:
+                    #f.create_dataset('meta', data=f_in['meta'])
+                    f_in.copy('meta', f)
 
-                # TODO optimize this.
-                if args.obj_name not in f[grp].keys():
-                    for tracker_ in trackers:
-                        f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
-                        f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
-                elif args.obj_id.name not in f[grp][args.obj_name]:
-                    for tracker_ in trackers:
-                        f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
-                        f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
+            # TODO optimize this.
+            if args.obj_name not in f[grp].keys():
+                for tracker_ in trackers:
+                    f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
+                    f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
+            elif args.obj_id.name not in f[grp][args.obj_name]:
+                for tracker_ in trackers:
+                    f.create_dataset(name=str(cad_path/tracker_/'rendered_frames'), shape=rendered_frames.shape, dtype='i')
+                    f.create_dataset(name=str(cad_path/tracker_/'poses'), shape=poses.shape, dtype='f')
 
-                f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/rendered_frames"][:]=rendered_frames
-                f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/poses"][:]=poses
+            f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/rendered_frames"][:]=rendered_frames
+            f[f"{grp}/{args.obj_name}/{args.obj_id.name}/{tracker}/poses"][:]=poses
 
-                print("Saved rendered frames to file", args.file_out+".hd5f", " in path:", 
-                        obj_path/args.obj_id.name/tracker/'rendered_frames', "and",
-                        obj_path/args.obj_id.name/tracker/'poses')
+            print("Saved rendered frames to file", args.file_out+".hd5f", " in path:", 
+                    obj_path/args.obj_id.name/tracker/'rendered_frames', "and",
+                    obj_path/args.obj_id.name/tracker/'poses')
+        else:
+            print("Files not saved. Flag --save set to", args.save_rendered)
 
-            for frame in rendered_frames:
-                cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
-                cv2.imshow('Align Example', frame)
-                key = cv2.waitKey(int(1000/fps))
-                if key & 0xFF == ord('q') or key == 27:
-                    cv2.destroyAllWindows()
-                    break
+        for frame in rendered_frames:
+            cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
+            cv2.imshow('Align Example', frame)
+            key = cv2.waitKey(int(1000/fps))
+            if key & 0xFF == ord('q') or key == 27:
+                cv2.destroyAllWindows()
+                break
 
-            #r = input("Save as video? [y/n]")
-            #if r.lower() == 'y':
-            #    name = input("name: ")
-            #    writer = cv2.VideoWriter(f"{name}.avi",
-            #    #cv2.VideoWriter_fourcc(*"MJPG"), 30,(640,480))
-            #    cv2.VideoWriter_fourcc(*"MJPG"), fps,(rendered_frames.shape[1], rendered_frames.shape[0]))
+        #r = input("Save as video? [y/n]")
+        #if r.lower() == 'y':
+        #    name = input("name: ")
+        #    writer = cv2.VideoWriter(f"{name}.avi",
+        #    #cv2.VideoWriter_fourcc(*"MJPG"), 30,(640,480))
+        #    cv2.VideoWriter_fourcc(*"MJPG"), fps,(rendered_frames.shape[1], rendered_frames.shape[0]))
 
-            #    for frame in rendered_frames:
-            #        #writer.write(np.random.randint(0, 255, (480,640,3)).astype('uint8'))
-            #        writer.write(frame)
+        #    for frame in rendered_frames:
+        #        #writer.write(np.random.randint(0, 255, (480,640,3)).astype('uint8'))
+        #        writer.write(frame)
 
-            #    writer.release()
+        #    writer.release()
         f.close()
         
         # This for next round icp if first run was ove6d only.
@@ -390,6 +394,7 @@ if __name__=="__main__":
     #parser.set_defaults(render_mesh=True)
     ### Python >= 3.9
     parser.add_argument('-rm', '--render-mesh', dest='render_mesh', action=argparse.BooleanOptionalAction)
+    parser.add_argument('--save', dest='save_rendered', action=argparse.BooleanOptionalAction, help="Save rendered files to file_out.")
     parser.add_argument('-icp', dest='icp', action=argparse.BooleanOptionalAction)
 
     
