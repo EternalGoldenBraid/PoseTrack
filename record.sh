@@ -6,5 +6,6 @@ if [ $# -ne 2 ]; then
 else
   # Record data
   #python scripts/record.py -o huawei_box -f huawei_box -d 5 --fps 30
-  python scripts/record.py -o $1 -f $2 -d 3 --fps 60
+  #python scripts/record.py -o $1 -f $2 -d 3 --fps 60
+  python scripts/record.py -o $1 -f $2 -d 3 --fps 15
 fi

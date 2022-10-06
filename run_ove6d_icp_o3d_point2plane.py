@@ -153,7 +153,6 @@ def main(args):
                         #o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=10)
                         )
                     dH = torch.tensor(reg_p2p.transformation).to(torch.float32)
-                    print(dH)
 
                     H = (dH @ H_old)
 

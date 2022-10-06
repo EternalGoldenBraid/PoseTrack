@@ -14,6 +14,7 @@ from os.path import join as pjoin
 base_path = os.path.dirname(os.path.abspath("."))
 sys.path.append(base_path)
 
+breakpoint()
 from ove6d.utility import load_segmentation_model, cam_control
 
 from ove6d.configs import config as cfg
